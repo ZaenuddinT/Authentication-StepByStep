@@ -4,7 +4,8 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose =require("mongoose");
-const encrypt = require("mongoose-encryption");
+// const encrypt = require("mongoose-encryption");
+const md5 = require("md5");
 
 const app = express();
 
@@ -21,7 +22,7 @@ const userSchema = new mongoose.Schema ({ //membuat schema objek mongoose
   password: String,
 });
 
-userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ["password"] } ); //lihat dokumentasi npm mongoose-encryption
+// userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ["password"] } ); //lihat dokumentasi npm mongoose-encryption
 
 
 const User = new mongoose.model("User", userSchema); //membuat model User dan collection
@@ -42,7 +43,7 @@ app.get("/register", function(req, res){
 app.post("/register", function(req, res){
   const newUser = new User({ //membuat objer newUser saat register
     email: req.body.username, //membaca username
-    password: req.body.password //membaca password
+    password: md5(req.body.password) //membaca password
   });
 
   newUser.save(function(err){ //menyimpan newUser dari register di mongoose
@@ -56,7 +57,7 @@ app.post("/register", function(req, res){
 
 app.post("/login", function(req, res){
   const username = req.body.username; //membaca input email/username
-  const password = req.body.password; //membaca input password
+  const password = md5(req.body.password); //membaca input password dengan enkripsi md5
 
   User.findOne({email: username}, function(err, foundUser){ //mencocokan email dengan database
     if(err){
