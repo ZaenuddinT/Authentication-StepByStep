@@ -1,9 +1,11 @@
 //jshint esversion:6
-
+require('dotenv').config(); //require package dotenv harus ditaruh paling awal
 const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose =require("mongoose");
+const encrypt = require("mongoose-encryption");
+
 const app = express();
 
 app.use(express.static("public"));
@@ -14,10 +16,13 @@ app.use(bodyParser.urlencoded({
 
 mongoose.connect("mongodb://localhost:27017/userDB", {useNewUrlParser: true}); //membuat koneksi dan collection mongoose
 
-const userSchema = new mongoose.Schema({ //membuat schema objek mongoose
+const userSchema = new mongoose.Schema ({ //membuat schema objek mongoose
   email: String,
   password: String,
 });
+
+userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ["password"] } ); //lihat dokumentasi npm mongoose-encryption
+
 
 const User = new mongoose.model("User", userSchema); //membuat model User dan collection
 
@@ -62,7 +67,7 @@ app.post("/login", function(req, res){
           res.render("secrets"); //apabila sesuai maka akan diampilkan halaman "secrets"
         }
       }
-    }
+     }
   });
 });
 //halaman "secrets" adalah halaman yang hanya dapat diakses oleh user yang register dan login saja
