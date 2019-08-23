@@ -59,9 +59,29 @@ app.get("/register", function(req, res){
   res.render("register");
 });
 
+app.get("/secrets", function(req, res){
+  if (req.isAuthenticated()){ //jika user terotentikasi, dengan session, passport passport-local, passport-local-mongoose
+    res.render("secrets");
+  }else{
+    res.redirect("/login");
+  }
+
+});
 app.post("/register", function(req, res){
-
-
+//---metode register dari passport-local-passportLocalMongoose--
+  User.register({username: req.body.username}, req.body.password, function(err, user){
+    if (err){
+      console.log(err);
+      res.redirect("/register");
+    }else{
+      //otentikasi untuk menyiapkan login session cookies, agar ketika user login akan langsung diarahkan ke halaman secrets
+      passport.authenticate("local")(req, res, function(){
+        res.redirect("/secrets");
+    });
+  }
+});
+//-------------------------------------------------------
+//--metode regster hash bcrypt--
 //   bcrypt.hash(req.body.password, saltRounds, function(err, hash) { //teknik hash password pada package bcrypt
 //     const newUser = new User({ //membuat objer newUser saat register
 //       email: req.body.username, //membaca username
@@ -81,6 +101,21 @@ app.post("/register", function(req, res){
 
 
 app.post("/login", function(req, res){
+  const user = new User({
+    username: req.body.username,
+    password: req.body.password
+  });
+  //metode login dari passport
+  req.login(user, function(err){
+    if(err){
+      console.log(err);
+    }else{
+      passport.authenticate("local")(req, res, function(){ //memeriksa cookies session user ketika login
+        res.redirect("/secrets");
+      });
+    }
+  });
+
 
   // const username = req.body.username; //membaca input email/username
   // const password = req.body.password; //membaca input password
