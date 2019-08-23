@@ -67,6 +67,13 @@ app.get("/secrets", function(req, res){
   }
 
 });
+app.get("/logout", function(req, res){
+  //metode logout dari package passport
+  req.logout();
+  res.redirect("/");
+});
+//update the code
+//setiap server diupdate maka cookies akan terhapus dan session akan di restart
 app.post("/register", function(req, res){
 //---metode register dari passport-local-passportLocalMongoose--
   User.register({username: req.body.username}, req.body.password, function(err, user){
