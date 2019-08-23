@@ -5,7 +5,9 @@ const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose =require("mongoose");
 // const encrypt = require("mongoose-encryption");
-const md5 = require("md5");
+// const md5 = require("md5");
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 
 const app = express();
 
@@ -41,11 +43,11 @@ app.get("/register", function(req, res){
 });
 
 app.post("/register", function(req, res){
-  const newUser = new User({ //membuat objer newUser saat register
-    email: req.body.username, //membaca username
-    password: md5(req.body.password) //membaca password
+  bcrypt.hash(req.body.password, saltRounds, function(err, hash) { //teknik hash password pada package bcrypt
+    const newUser = new User({ //membuat objer newUser saat register
+      email: req.body.username, //membaca username
+      password: hash //membaca password
   });
-
   newUser.save(function(err){ //menyimpan newUser dari register di mongoose
     if (err){
       console.log(err);
@@ -53,20 +55,26 @@ app.post("/register", function(req, res){
       res.render("secrets"); //menampilkan halaman secrets
     }
   });
- });
+});
+
+});
+
+
 
 app.post("/login", function(req, res){
   const username = req.body.username; //membaca input email/username
-  const password = md5(req.body.password); //membaca input password dengan enkripsi md5
+  const password = req.body.password; //membaca input password
 
   User.findOne({email: username}, function(err, foundUser){ //mencocokan email dengan database
     if(err){
       console.log(err);
     } else {
       if (foundUser){
-        if (foundUser.password === password){ //mencocokan password dengan database
-          res.render("secrets"); //apabila sesuai maka akan diampilkan halaman "secrets"
-        }
+        bcrypt.compare(password, foundUser.password, function(err, result) { // res = true
+          if (result === true) {
+            res.render("secrets"); //apabila sesuai maka akan diampilkan halaman "secrets"
+          }
+        });
       }
      }
   });

@@ -13,6 +13,7 @@
   "author": "Zaenuddin",
   "license": "ISC",
   "dependencies": {
+    "bcrypt": "^3.0.6",
     "body-parser": "^1.19.0",
     "dotenv": "^8.1.0",
     "ejs": "^2.6.2",
