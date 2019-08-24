@@ -7,7 +7,8 @@ const mongoose =require("mongoose");
 const session = require("express-session"); //require package express-session
 const passport = require("passport"); //require package passport
 const passportLocalMongoose = require("passport-local-mongoose"); //require package passport-local-mongoose
-
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const findOrCreate = require('mongoose-findorcreate');
 // const encrypt = require("mongoose-encryption");
 // const md5 = require("md5");
 // const bcrypt = require('bcrypt');
@@ -21,7 +22,8 @@ app.use(bodyParser.urlencoded({
   extended: true
 }));
 
-app.use(session({ //inisialisasi session (express-session package documentation)
+//inisialisasi session (express-session package documentation)
+app.use(session({
   secret: "Super string secret.", // kode secret string
   resave: false,
   saveUninitialized: false
@@ -39,17 +41,60 @@ const userSchema = new mongoose.Schema ({ //membuat schema objek mongoose
 });
 
 userSchema.plugin(passportLocalMongoose); //mengaktifkan plugin package passport-local-mongoose
-// userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ["password"] } ); //lihat dokumentasi npm mongoose-encryption
+userSchema.plugin(findOrCreate); //mengaktifkan plugin package findOrCreate
+// userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ["password"] } ); //lihat dokumentasi mongoose-encryption
 
 const User = new mongoose.model("User", userSchema); //membuat model User dan collection
 passport.use(User.createStrategy()); //konfigurasi passport-local
 
-passport.serializeUser(User.serializeUser());  //membuat cookie
-passport.deserializeUser(User.deserializeUser()); //destory cookie
+//// Methode Serialize & Deserialize dari package passport untuk semua strategi
+passport.serializeUser(function(user, done) {
+  done(null, user.id);
+});
+
+passport.deserializeUser(function(id, done) {
+  User.findById(id, function(err, user) {
+    done(err, user);
+  });
+});
+
+//// Methode Serialize & Deserialize dari package passport-local-mongoose
+// passport.serializeUser(User.serializeUser());
+// passport.deserializeUser(User.deserializeUser());
+//-----------------------------------
+
+////---inisialisasi passport-google-oauth2 google strategy, untuk login user---
+passport.use(new GoogleStrategy({
+    clientID: process.env.CLIENT_ID,
+    clientSecret: process.env.CLIENT_SECRET,
+    callbackURL: "http://localhost:3000/auth/google/secrets",
+    userProfileURL:"https://www.googleapis.com/oauth2/v3/userinfo" //fix deprecated google plus oauth2.0
+  },
+  function(accessToken, refreshToken, profile, cb) { //accessToken yang dikirim google, data pada profile,
+    console.log(profile);
+    //metode User.findOrCreatOne ini harus dibuat terlebih dulu,
+    //metode USER.findOrCreate bukan merupakan method langsung dari mongoose atau passport, dan harus menginstall package mongoose-findorcreate
+    User.findOrCreate({ googleId: profile.id }, function (err, user) {
+      return cb(err, user);
+    });
+  }
+));
 
 app.get("/", function(req, res){
   res.render("home");
 });
+
+//otentikasi google server untuk meminta profile user
+app.get("/auth/google",
+  passport.authenticate("google", { scope: ["profile"] })
+);
+
+app.get("/auth/google/secrets", //masuk ke local web
+  passport.authenticate("google", { failureRedirect: "/login" }), //otentikasi dengan lokal database, metode login passport
+  function(req, res) {
+    // Successful authentication, redirect halaman secrets, login berhasil
+    res.redirect("/secrets");
+  });
 
 app.get("/login", function(req, res){
   res.render("login");
@@ -72,7 +117,7 @@ app.get("/logout", function(req, res){
   req.logout();
   res.redirect("/");
 });
-//update the code
+//update kode
 //setiap server diupdate maka cookies akan terhapus dan session akan di restart
 app.post("/register", function(req, res){
 //---metode register dari passport-local-passportLocalMongoose--
@@ -123,7 +168,8 @@ app.post("/login", function(req, res){
     }
   });
 
-
+  //-------------------------------------------------------
+  //--metode login hash bcrypt--
   // const username = req.body.username; //membaca input email/username
   // const password = req.body.password; //membaca input password
   //
