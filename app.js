@@ -1,4 +1,4 @@
-//jshint esversion:6
++-//jshint esversion:6
 require('dotenv').config(); //require package dotenv harus ditaruh paling awal
 const express = require("express");
 const bodyParser = require("body-parser");
@@ -33,11 +33,13 @@ app.use(passport.initialize()); //inisialisasi passport
 app.use(passport.session()); //inisialisasi passport-session
 
 mongoose.connect("mongodb://localhost:27017/userDB", {useNewUrlParser: true}); //membuat koneksi dan collection mongoose
-mongoose.set("useCreateIndex", true); //fix DeprecatedWarning
+mongoose.set("useCreateIndex", true); //fix DeprecatedWarning+
 
 const userSchema = new mongoose.Schema ({ //membuat schema objek mongoose
   email: String,
   password: String,
+  googleId: String, //menyimpan googleId di database local, agar ketika user login tidak membuat data baru
+  secret: String //secret yang di input user
 });
 
 userSchema.plugin(passportLocalMongoose); //mengaktifkan plugin package passport-local-mongoose
@@ -105,13 +107,52 @@ app.get("/register", function(req, res){
 });
 
 app.get("/secrets", function(req, res){
+  //method mongodb untuk memeriksa bahwa secrest not null, $ne= "not equals'
+  User.find({"secret": {$ne: null}}, function(err, foundUser){
+    if (err){
+      console.log(err);
+    } else{
+      if (foundUser) {
+        res.render("secrets", {userWithSecrets: foundUser});
+      }
+    }
+  });
+  // if (req.isAuthenticated()){ //jika user terotentikasi, dengan session, passport passport-local, passport-local-mongoose
+  //   res.render("secrets");
+  // }else{
+  //   res.redirect("/login");
+  // }
+
+});
+
+app.get("/submit", function(req, res){
   if (req.isAuthenticated()){ //jika user terotentikasi, dengan session, passport passport-local, passport-local-mongoose
-    res.render("secrets");
+    res.render("submit");
   }else{
     res.redirect("/login");
   }
-
 });
+
+app.post("/submit", function(req, res){
+  const submittedSecret = req.body.secret;
+
+  console.log(req.user.id);
+
+  User.findById(req.user.id, function(err, foundUser){
+    if (err) {
+      console.log(err);
+    } else{
+      if (foundUser){
+        foundUser.secret = submittedSecret;
+        foundUser.save(function(){
+          res.redirect("/secrets");
+        });
+      }
+    }
+  });
+});
+
+
 app.get("/logout", function(req, res){
   //metode logout dari package passport
   req.logout();
@@ -149,8 +190,6 @@ app.post("/register", function(req, res){
 // });
 
 });
-
-
 
 app.post("/login", function(req, res){
   const user = new User({
